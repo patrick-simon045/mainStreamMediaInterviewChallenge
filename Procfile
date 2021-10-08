@@ -1,1 +1,3 @@
-web: gunicorn demo.wsgi --log-file -
+release: python manage.py makemigrations --no-input
+release: python manage.py migrate --no-input
+web: gunicorn mainStreamMediaInterview.wsgi --log-file -
