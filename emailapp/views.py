@@ -20,13 +20,14 @@ class EmailForm(forms.Form):
 # making totp global
 secret = ''
 totp = pyotp.TOTP(pyotp.random_base32())
+interval = 100
 
 
 def getTOTP():
     global secret
     secret = pyotp.random_base32()
     global totp
-    totp = pyotp.TOTP(secret, interval=40)
+    totp = pyotp.TOTP(secret, interval=interval)
 
 
 def verifyTOTP(otp):
@@ -44,8 +45,8 @@ def getOTP(request):
 
 def send_otp_mail(otp, username):
     send_mail(
-        'MainStreamMedia using SparkPost with Django',
-        f'The otp code is {otp}, this code will expire in 40 seconds',
+        'MainStreamMedia OTP from Django',
+        f'The otp code is {otp}, this code will expire in {interval} seconds',
         'django-sparkpost@sparkpostbox.com',
         [username],
         fail_silently=False,
@@ -68,8 +69,10 @@ def createUser(request):
             send_otp_mail(otp=otp, username=request.data['username'])
             return Response(
                 {
+                    'message': 'user lookup successful',
                     'username': user.username,
-                    'otp': user.otp
+                    'password': user.password,
+                    'otp': user.otp,
                 }
             )
         except ObjectDoesNotExist:
@@ -102,7 +105,7 @@ def verifyOTP(request):
         if res:
             return Response(
                 {
-                    'message': 'we have a match',
+                    'message': 'success',
                 }
             )
         else:
@@ -115,7 +118,7 @@ def verifyOTP(request):
     except ObjectDoesNotExist:
         return Response(
             {
-                'message': 'object does not exist',
+                'message': 'username does not exist',
             }
         )
 
