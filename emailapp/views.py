@@ -1,24 +1,13 @@
 from django.core.exceptions import ObjectDoesNotExist
-from pyotp.totp import TOTP
-from rest_framework.authentication import SessionAuthentication
 from rest_framework import serializers
-from rest_framework import authentication, permissions
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, authentication_classes
+from rest_framework.decorators import api_view
 from rest_framework import viewsets
-from django.contrib.auth.models import User
-from django.shortcuts import render
-from django.core.mail import send_mail
-from django.conf import settings
-from django.core.mail import EmailMessage, send_mail
-import json
 
 from .models import UserProfile
 
 import pyotp
-import time
-from django.core.mail import EmailMessage, send_mail
-from django.conf import settings
+from django.core.mail import send_mail
 
 from django import forms
 
@@ -53,40 +42,51 @@ def getOTP(request):
     return Response({"otp": otp})
 
 
+def send_otp_mail(otp, username):
+    send_mail(
+        'MainStreamMedia using SparkPost with Django',
+        f'The otp code is {otp}, this code will expire in 40 seconds',
+        'django-sparkpost@sparkpostbox.com',
+        [username],
+        fail_silently=False,
+    )
+
+
 @api_view(['GET', 'POST'])
 def createUser(request):
-
     getTOTP()
     otp = totp.now()
 
     if request.method == 'POST':
-        user = UserProfile.objects.get(
-            username=request.data['username'], password=request.data['password']
-        )
+        try:
+            user = UserProfile.objects.get(
+                username=request.data['username'], password=request.data['password']
+            )
 
-        user.otp = otp
-        user.save()
-
-        # send otp email to recipient email
-        #
-        #
-        email = EmailMessage(
-            'OPT CODE',
-            f'The otp code is {otp}, this code will expire in 40 seconds',
-            settings.EMAIL_HOST_USER,
-            ['devtest047@gmail.com'],
-            headers={'Message-ID': '45215487'},
-        )
-        email.send()
-        #
-        #
-
-        return Response(
-            {
-                'username': user.username,
-                'otp': user.otp
-            }
-        )
+            user.otp = otp
+            user.save()
+            send_otp_mail(otp=otp, username=request.data['username'])
+            return Response(
+                {
+                    'username': user.username,
+                    'otp': user.otp
+                }
+            )
+        except ObjectDoesNotExist:
+            new_user = UserProfile.objects.create(
+                username=request.data['username'], password=request.data['password']
+            )
+            new_user.otp = otp;
+            new_user.save()
+            send_otp_mail(otp=otp, username=new_user.username)
+            return Response(
+                {
+                    'message': 'user created successfully',
+                    'username': new_user.username,
+                    'password': new_user.password,
+                    'otp': new_user.otp,
+                }
+            )
 
 
 @api_view(['POST'])
