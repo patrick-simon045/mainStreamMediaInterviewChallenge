@@ -1,8 +1,6 @@
 from django.urls import path, include
-from .views import getOTP
 from rest_framework import routers
-from emailapp import views
-
+from . import views
 
 router = routers.DefaultRouter()
 router.register(r'users', views.UserViewSet)
